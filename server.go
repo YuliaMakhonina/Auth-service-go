@@ -13,6 +13,7 @@ import (
 	"log"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
@@ -61,34 +62,38 @@ func main() {
 		}
 		fmt.Println("Connection to MongoDB closed.")
 	}()
-
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
 
 func getDBCollection(name string, collectionName string) (*mongo.Collection, *mongo.Client, context.Context) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-
+	//ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+ctx := context.TODO()
 	// Create client
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://127.0.0.1:27017"))
+	mongoConnectString := "mongodb+srv://JKXCxGiSWYLsvzsT:JKXCxGiSWYLsvzsT@cluster0.x6jxq.mongodb.net"
+	client, err := mongo.NewClient(options.Client().ApplyURI(mongoConnectString))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-
 	// Create connect
 	err = client.Connect(ctx)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Create connect")
+		panic(err)
 	}
-
 	// Check the connection
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Check the connection")
+		panic(err)
 	}
 
 	fmt.Println("Connected to MongoDB!")
 
 	collection := client.Database(name).Collection(collectionName)
+	if ctx.Err() != nil {
+		fmt.Println("ctx.Err() is not null")
+		panic(ctx.Err())
+	}
 	return collection, client, ctx
 }
 
@@ -180,10 +185,12 @@ func getIdsAdIps(c *gin.Context) {
 
 	cursor, err := collection.Find(ctx, bson.M{"user_id": jwtParsedClaims["iss"]})
 	if err != nil {
+		fmt.Println("error while getting tokens ids, ips")
 		log.Fatal(err)
 	}
 	var tokens []IpId
 	if err = cursor.All(ctx, &tokens); err != nil {
+		fmt.Println("couldn't parse cursor")
 		log.Fatal(err)
 	}
 	fmt.Println(tokens)
@@ -287,4 +294,24 @@ func ParseAccessTokenMiddleWare() gin.HandlerFunc {
 			c.Next()
 		}
 	}
+}
+
+func timeOutMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		done := make(chan bool)
+		ctx, cancelFunc := context.WithTimeout(r.Context(), time.Second*1)
+		defer cancelFunc()
+		go func() {
+			next.ServeHTTP(w, r)
+			close(done)
+		}()
+		select {
+		case <-done:
+			return
+		case <-ctx.Done():
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"message": "handled time out"}`))
+		}
+	})
+
 }
