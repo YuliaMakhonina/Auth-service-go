@@ -10,10 +10,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"time"
 )
@@ -64,12 +63,12 @@ func main() {
 		fmt.Println("Connection to MongoDB closed.")
 	}()
 	port := os.Args[len(os.Args)-1]
-	r.Run(fmt.Sprintf(":%s", port)) // listen and serve on 0.0.0.0:8080
+	r.Run(fmt.Sprintf(":%s", port))
 }
 
 func getDBCollection(name string, collectionName string) (*mongo.Collection, *mongo.Client, context.Context) {
-	//ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-ctx := context.TODO()
+
+	ctx := context.TODO()
 	// Create client
 	mongoConnectString := "mongodb+srv://JKXCxGiSWYLsvzsT:JKXCxGiSWYLsvzsT@cluster0.x6jxq.mongodb.net"
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoConnectString))
@@ -296,24 +295,4 @@ func ParseAccessTokenMiddleWare() gin.HandlerFunc {
 			c.Next()
 		}
 	}
-}
-
-func timeOutMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		done := make(chan bool)
-		ctx, cancelFunc := context.WithTimeout(r.Context(), time.Second*1)
-		defer cancelFunc()
-		go func() {
-			next.ServeHTTP(w, r)
-			close(done)
-		}()
-		select {
-		case <-done:
-			return
-		case <-ctx.Done():
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"message": "handled time out"}`))
-		}
-	})
-
 }
