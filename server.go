@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -62,7 +63,8 @@ func main() {
 		}
 		fmt.Println("Connection to MongoDB closed.")
 	}()
-	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+	port := os.Args[len(os.Args)-1]
+	r.Run(fmt.Sprintf(":%s", port)) // listen and serve on 0.0.0.0:8080
 }
 
 func getDBCollection(name string, collectionName string) (*mongo.Collection, *mongo.Client, context.Context) {
